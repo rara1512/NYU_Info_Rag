@@ -14,24 +14,29 @@ def save_page(url, content, base_path):
     with open(filename + ".txt", 'w', encoding='utf-8') as f:
         f.write(content)
 
-def scrape_website(url, base_path):
-    response = requests.get(url)
+def scrape_website(starting_url, base_path):
+    stack = [starting_url]
 
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, 'html.parser')
-        save_page(url, response.text, base_path)
+    while stack:
+        current_url = stack.pop()
 
-        links = soup.find_all('a', href=True)
+        response = requests.get(current_url)
 
-        for link in links:
-            absolute_url = urljoin(url, link['href'])
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            save_page(current_url, response.text, base_path)
 
-            if urlparse(absolute_url).netloc.endswith('nyu.edu'):
-                scrape_website(absolute_url, base_path)
+            links = soup.find_all('a', href=True)
+
+            for link in links:
+                absolute_url = urljoin(current_url, link['href'])
+
+                if urlparse(absolute_url).netloc.endswith('nyu.edu'):
+                    stack.append(absolute_url)
 
 if __name__ == "__main__":
     starting_url = "https://www.nyu.edu/"
-    base_save_path = "NYU Home Page"
+    base_save_path = "NYU Homepage"
 
     scrape_website(starting_url, base_save_path)
-
+# New
