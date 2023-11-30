@@ -4,7 +4,7 @@ from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 import tldextract
 
-def save_page(url, content, base_path):
+def save_page(url, soup, base_path):
     domain_name = tldextract.extract(url).domain
     parsed_url = urlparse(url)
     filename = os.path.join(base_path, domain_name, parsed_url.path.lstrip("/").replace("/", "_"))
@@ -12,7 +12,7 @@ def save_page(url, content, base_path):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
 
     with open(filename + ".txt", 'w', encoding='utf-8') as f:
-        f.write(content)
+        f.write(soup.get_text())
 
 def scrape_website(starting_url, base_path):
     stack = [starting_url]
@@ -24,7 +24,7 @@ def scrape_website(starting_url, base_path):
 
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            save_page(current_url, response.text, base_path)
+            save_page(current_url, soup, base_path)
 
             links = soup.find_all('a', href=True)
 
@@ -36,7 +36,6 @@ def scrape_website(starting_url, base_path):
 
 if __name__ == "__main__":
     starting_url = "https://www.nyu.edu/"
-    base_save_path = "NYU Homepage"
+    base_save_path = "NYU Home"
 
     scrape_website(starting_url, base_save_path)
-# New
