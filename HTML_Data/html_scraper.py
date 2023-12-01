@@ -1,39 +1,64 @@
 import requests
-from bs4 import BeautifulSoup  
+from bs4 import BeautifulSoup
+import os
 from queue import Queue
 import lxml
 
-START_URL = "https://www.nyu.edu/" 
-DOMAIN = "nyu.edu"
-  
-queue = Queue()
-scraped = set()  
+# Allowed domain
+DOMAIN = "nyu.edu"  
 
-def scrape():
-    queue.put(START_URL)
+# Folder to save text files
+folder = "scraped_texts"
+os.mkdir(folder)  
 
-    while not queue.empty():
-        url = queue.get()
+def scrape(url):
+    try:
+        res = requests.get(url)  
+    except Exception as e:
+        print(e)
+        return 
+
+    soup = BeautifulSoup(res.text, 'lxml')
+    
+    # Logic to extract text 
+    text = ""
+    for p in soup.find_all('p'):
+        text += p.text + "\n"
+
+    # Get clean file name
+    name = url.replace("/", "_")
+
+    # Save text file  
+    file_path = os.path.join(folder, name + ".txt")
+    with open(file_path, "w") as f:
+        f.write(text)
+
+    links = soup.find_all('a')
         
-        if url in scraped:
-            continue
-            
-        scraped.add(url)
-            
-        print(f"Scraping: {url}")
-      
-        try:
-            response = requests.get(url)
-        except: 
-            continue 
+    urls = []
+    for a in links:
+        href = a.get("href") 
+        if href and DOMAIN in href:
+            urls.append(href)
+    
+    return urls
 
-        soup = BeautifulSoup(response.content, 'lxml')
-        content = soup.find('div', {'class': 'content'}).text 
+# Initialize    
+start_url = "https://www.nyu.edu/"
+queue = Queue()
+queue.put(start_url)  
 
-        links = soup.find_all('a')
-        for link in links: 
-            href = link.get("href")  
-            if href and DOMAIN in href:
-                queue.put(href)
+processed = set()   
 
-scrape()
+while not queue.empty():
+    url = queue.get()  
+    if url in processed:
+        continue
+
+    processed.add(url)  
+    links = scrape(url)
+    
+    for link in links:
+        queue.put(link)
+        
+print("Scrape complete")
