@@ -1,5 +1,6 @@
 import os
 import requests
+import lxml
 from bs4 import BeautifulSoup
 
 # Allowed domain 
@@ -35,7 +36,11 @@ def scrape_site(url, domain):
     links = soup.find_all('a')
     
     # Follow subdomains
-    subdomains = [link["href"] for link in links if domain in link["href"]] 
+    subdomains = []
+    for link in links:
+        href = link.get("href") # Returns None if not present
+        if href and domain in href:
+            subdomains.append(href)
     
     for url in subdomains:
         scrape_site(url, domain)
