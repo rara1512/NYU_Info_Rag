@@ -4,61 +4,58 @@ import os
 from queue import Queue
 import lxml
 
-# Allowed domain
-DOMAIN = "nyu.edu"  
-
-# Folder to save text files
-folder = "scraped_texts"
-os.mkdir(folder)  
+DOMAIN = "nyu.edu"
+folder = "scraped_data"
+os.mkdir(folder)
 
 def scrape(url):
     try:
         res = requests.get(url)  
     except Exception as e:
-        print(e)
-        return 
-
+        print(e) 
+        return []
+    
     soup = BeautifulSoup(res.text, 'lxml')
     
-    # Logic to extract text 
-    text = ""
-    for p in soup.find_all('p'):
-        text += p.text + "\n"
-
-    # Get clean file name
-    name = url.replace("/", "_")
-
-    # Save text file  
-    file_path = os.path.join(folder, name + ".txt")
-    with open(file_path, "w") as f:
+    text = "\n".join([p.text for p in soup.find_all('p')])
+    
+    name = url.replace("/", "_") 
+    filepath = os.path.join(folder, name + ".txt")
+    with open(filepath, "w") as f:
         f.write(text)
 
-    links = soup.find_all('a')
+    links = []
+    for a in soup.find_all("a"):
+        href = a.get("href")
         
-    urls = []
-    for a in links:
-        href = a.get("href") 
+        # Handle scheme-less links 
+        if href and "//" in href:
+           href = "https:" + href
+           
+        # Filter by domain  
         if href and DOMAIN in href:
-            urls.append(href)
-    
-    return urls
+            links.append(href)
+            
+    return links
 
-# Initialize    
-start_url = "https://www.nyu.edu/"
+start_url = "https://www." + DOMAIN  
 queue = Queue()
-queue.put(start_url)  
-
-processed = set()   
+queue.put(start_url)
+scraped = set()
 
 while not queue.empty():
-    url = queue.get()  
-    if url in processed:
+    url = queue.get()   
+    if url in scraped:
+        continue
+        
+    scraped.add(url)
+
+    # Handle case of no links returned      
+    new_links = scrape(url)
+    if new_links is None:
         continue
 
-    processed.add(url)  
-    links = scrape(url)
-    
-    for link in links:
+    for link in new_links: 
         queue.put(link)
-        
+
 print("Scrape complete")
