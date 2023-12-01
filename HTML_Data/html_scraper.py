@@ -1,61 +1,98 @@
-import requests
-from bs4 import BeautifulSoup
 import os
-from queue import Queue
+import requests
 import lxml
+from bs4 import BeautifulSoup
+from queue import Queue
 
-DOMAIN = "nyu.edu"
-folder = "scraped_data"
-os.mkdir(folder)
+# Allowed domain 
+domain = "nyu.edu"  
 
-def scrape(url):
-    try:
-        res = requests.get(url)  
-    except Exception as e:
-        print(e) 
-        return []
-    
-    soup = BeautifulSoup(res.text, 'lxml')
-    
-    text = "\n".join([p.text for p in soup.find_all('p')])
-    
-    name = url.replace("/", "_") 
-    filepath = os.path.join(folder, name + ".txt")
-    with open(filepath, "w") as f:
-        f.write(text)
+# Root folder to save text files
+root_dir = "scraped_data"
+os.makedirs(root_dir, exist_ok=True)
 
-    links = []
-    for a in soup.find_all("a"):
-        href = a.get("href")
+def scrape_site(queue, domain):
+    while not queue.empty():
+        url = queue.get()
         
-        # Handle scheme-less links 
-        # if href and "//" in href:
-        #    href = "https:" + href
-           
-        # Filter by domain  
-        if href and DOMAIN in href:
-            links.append(href)
-            
-    return links
+        try:
+            res = requests.get(url)
+        except: 
+            return  
 
-start_url = "https://www." + DOMAIN  
-queue = Queue()
-queue.put(start_url)
+        soup = BeautifulSoup(res.text, 'lxml')
+        
+        # Get text content from paragraph tags
+        text = "" 
+        for paragraph in soup.find_all('p'):
+            text += paragraph.text + "\n"
+        
+        # Create file based on url 
+        file_name = url.replace("https://", "")
+        file_name = file_name.replace("/", "_")
+        file_path = os.path.join(root_dir, file_name + ".txt")
+        
+        # Save text content 
+        with open(file_path, "w") as f:
+            print(url, file=f)  
+            f.write(text)
+            
+        links = soup.find_all('a')
+        
+        for link in links: 
+            href = link.get("href")  
+            if href and domain in href:
+                queue.put(href)
+        
+# Start crawl
+
+base_url = "https://www."+domain
+
+queue = Queue()  
+queue.put(base_url)
+
 scraped = set()
 
+# Start
+sites = 0
+
 while not queue.empty():
-    url = queue.get()   
+    url = queue.get()
+    
     if url in scraped:
         continue
-        
+
     scraped.add(url)
+    sites+=1
+    print("Site number = ",sites)
+    print("Scraping - ",url)
 
-    # Handle case of no links returned      
-    new_links = scrape(url)
-    if new_links is None:
-        continue
+    try:
+        res = requests.get(url)
+    except: 
+        continue  
 
-    for link in new_links: 
-        queue.put(link)
-
-print("Scrape complete")
+    soup = BeautifulSoup(res.text, 'lxml')
+    
+    # Get text content from paragraph tags
+    text = "" 
+    for paragraph in soup.find_all('p'):
+        text += paragraph.text + "\n"
+    
+    # Create file based on url 
+    file_name = url.replace("https://", "")
+    file_name = file_name.replace("/", "_")
+    file_path = os.path.join(root_dir, file_name + ".txt")
+    
+    # Save text content 
+    with open(file_path, "w") as f:
+        print(url, file=f)  
+        f.write(text)
+        
+    links = soup.find_all('a')
+    
+    for link in links: 
+        href = link.get("href")  
+        if href and domain in href:
+            queue.put(href)
+# End
