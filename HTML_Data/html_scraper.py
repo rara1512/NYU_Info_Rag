@@ -29,8 +29,8 @@ def scrape(url):
         href = a.get("href")
         
         # Handle scheme-less links 
-        if href and "//" in href:
-           href = "https:" + href
+        # if href and "//" in href:
+        #    href = "https:" + href
            
         # Filter by domain  
         if href and DOMAIN in href:
